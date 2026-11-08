@@ -14,7 +14,7 @@ folder. Reports are written next to the program, in `reports/`.
 | By top-level folder | Which folders hold the weight |
 | Extensions in 'other' | What the uncategorized files are, by extension |
 | Executables | Architecture (32/64-bit), EXE or DLL, *Large Address Aware* flag, and which 32-bit executables are candidates for it |
-| Audio | Format, channels, sample rate and bitrate of loose WAV/OGG files, plus an estimated saving if uncompressed audio were converted |
+| Audio | Format, channels, sample rate, bitrate and duration of loose audio files (WAV, OGG, MP3, FLAC, M4A, Opus, WMA), plus an estimated saving if lossless audio were converted |
 | Textures | Format and resolution of loose DDS/PNG/TGA/BMP files, flagging oversized ones |
 | Detected file types | The real type of each file read from its first bytes (signature), regardless of extension; unknown formats show their first bytes so you can look them up |
 | Duplicates | Groups of identical files and the space they take |
@@ -70,6 +70,18 @@ It needs Python 3.8 or newer (standard library only; developed and tested on
 
 `run.bat` uses `runtime\python.exe` if it exists and the system Python otherwise.
 
+Optional third-party libraries live in `libs/` (pure Python, so they stay
+portable). Install them once with:
+
+    python -m pip install -r requirements.txt --target libs
+
+If `libs/` is missing or empty, the program still works with its built-in readers.
+
+## Third-party software
+
+- [tinytag](https://pypi.org/project/tinytag/) (MIT license), used to read audio
+  metadata. Its license file is kept inside `libs/`.
+
 To build a release `.zip` (it includes `runtime/` if present):
 
     python scripts/build_release.py <version>
@@ -81,7 +93,10 @@ To build a release `.zip` (it includes `runtime/` if present):
   analyzed.
 - Textures: only loose `.dds`, `.png`, `.tga` and `.bmp`. The DDS, TGA and BMP
   readers were tested with synthetic headers, not yet with real game files.
-- Audio: WAV and OGG Vorbis only. MP3 is not analyzed and the duration of OGG
+- Audio: MP3, FLAC, M4A, Opus, WMA and OGG durations need the optional `tinytag`
+  library (see below); without it only WAV and OGG are analyzed. The duration of
+  VBR MP3 files without a Xing header is estimated. The estimated saving is a
+  rough approximation.
   files is not computed. The estimated saving is a rough approximation.
 - Executables: only Windows (PE) files. "LAA candidate" marks every 32-bit `.exe`
   without the flag, installers and launchers included, so judge which one is the

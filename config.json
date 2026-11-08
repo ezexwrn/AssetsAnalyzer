@@ -1,7 +1,7 @@
 {
     "categories": {
       "textures": [".dds", ".tga", ".png", ".jpg", ".jpeg", ".bmp", ".txd"],
-      "audio": [".wav", ".mp3", ".ogg", ".flac", ".wma"],
+      "audio": [".wav", ".mp3", ".ogg", ".oga", ".opus", ".flac", ".m4a", ".wma"],
       "video": [".bik", ".avi", ".mp4", ".wmv", ".mpg"],
       "executables": [".exe", ".dll", ".asi"],
       "config": [".ini", ".cfg", ".xml", ".json", ".txt"],

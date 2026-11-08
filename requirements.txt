@@ -1,1 +1,3 @@
-# No external dependencies yet (standard library only)
+# Optional (pure Python). Installed into libs/ so the program stays portable:
+#   python -m pip install -r requirements.txt --target libs
+tinytag>=2.3.2,<3

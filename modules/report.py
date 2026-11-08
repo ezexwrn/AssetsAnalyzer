@@ -89,10 +89,10 @@ def _format_duration(seconds):
 
 def _audio_summary(data):
     items = data["audio"]["items"]
-    uncompressed = sum(1 for item in items if item["convertible"])
+    lossless = sum(1 for item in items if item["convertible"])
     saving = sum(item["estimated_saving"] for item in items)
     return (
-        f"{len(items)} files | {uncompressed} uncompressed | "
+        f"{len(items)} files | {lossless} lossless | "
         f"estimated saving at {data['audio']['target_kbps']} kbps: {format_size(saving)}"
     )
 
@@ -108,7 +108,7 @@ def _audio_rows(data):
             f"{item['bitrate_kbps']:.0f} kbps" if item["bitrate_kbps"] else "-",
             _format_duration(item["duration"]),
             item["path"],
-            "uncompressed" if item["convertible"] else "",
+            "lossless" if item["convertible"] else "",
         )
         for item in items
     ]

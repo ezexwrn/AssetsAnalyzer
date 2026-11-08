@@ -1,7 +1,14 @@
 import os
 import struct
 
+try:
+    from tinytag import TinyTag
+except ImportError:
+    TinyTag = None
+
 OGG_HEADER_SIZE = 96
+OGG_EXTENSIONS = {".ogg", ".oga"}
+TINYTAG_EXTENSIONS = {".mp3", ".flac", ".m4a", ".opus", ".wma", ".ogg", ".oga"}
 WAV_FORMATS = {
     1: "pcm",
     2: "ms adpcm",
@@ -13,7 +20,7 @@ WAV_FORMATS = {
     0x162: "wma",
     0xFFFE: "extensible",
 }
-UNCOMPRESSED_FORMATS = {"pcm", "float"}
+LOSSLESS_WAV_FORMATS = {"pcm", "float"}
 
 
 def read_wav(path):
@@ -50,8 +57,10 @@ def read_wav(path):
     channels = struct.unpack_from("<H", fmt, 2)[0]
     sample_rate = struct.unpack_from("<I", fmt, 4)[0]
     byte_rate = struct.unpack_from("<I", fmt, 8)[0]
+    format_name = WAV_FORMATS.get(format_tag, f"tag 0x{format_tag:04x}")
     return {
-        "format": WAV_FORMATS.get(format_tag, f"tag 0x{format_tag:04x}"),
+        "format": format_name,
+        "lossless": format_name in LOSSLESS_WAV_FORMATS,
         "channels": channels,
         "sample_rate": sample_rate,
         "bitrate_kbps": byte_rate * 8 / 1000 if byte_rate else None,
@@ -81,22 +90,67 @@ def read_ogg(path):
         "sample_rate": sample_rate,
         "bitrate_kbps": nominal_bitrate / 1000 if nominal_bitrate > 0 else None,
         "duration": None,
+        "lossless": False,
     }
 
 
-READERS = {".wav": read_wav, ".ogg": read_ogg, ".oga": read_ogg}
+def _format_label(extension, mime_type):
+    if extension in OGG_EXTENSIONS:
+        codec = mime_type.partition('codecs="')[2].rstrip('"')
+        return f"ogg {codec}" if codec else "ogg"
+    return extension.lstrip(".")
+
+
+def read_tinytag(path, extension):
+    try:
+        tag = TinyTag.get(path, tags=False, image=False)
+    except Exception:
+        # A parser bug or a corrupt file must not stop the whole scan.
+        return None
+
+    if tag.samplerate is None:
+        return None
+
+    return {
+        "format": _format_label(extension, tag.mime_type or ""),
+        "lossless": bool(tag.is_lossless),
+        "channels": tag.channels,
+        "sample_rate": tag.samplerate,
+        "bitrate_kbps": tag.bitrate or None,
+        "duration": tag.duration,
+    }
+
+
+def supported_extensions():
+    extensions = {".wav"} | OGG_EXTENSIONS
+    if TinyTag is not None:
+        extensions |= TINYTAG_EXTENSIONS
+    return extensions
+
+
+def read_audio(path, extension):
+    if extension == ".wav":
+        return read_wav(path)
+    if TinyTag is not None and extension in TINYTAG_EXTENSIONS:
+        info = read_tinytag(path, extension)
+        if info is not None:
+            return info
+    if extension in OGG_EXTENSIONS:
+        return read_ogg(path)
+    return None
 
 
 def summarize(files, root_folder, target_kbps):
+    supported = supported_extensions()
     results = []
     for file in files:
-        reader = READERS.get(file["extension"])
-        if reader is None:
+        extension = file["extension"]
+        if extension not in supported:
             continue
-        info = reader(os.path.join(root_folder, file["path"]))
+        info = read_audio(os.path.join(root_folder, file["path"]), extension)
         if info is None:
             continue
-        convertible = info["format"] in UNCOMPRESSED_FORMATS and info["duration"] is not None
+        convertible = info["lossless"] and info["duration"] is not None
         estimated = int(info["duration"] * target_kbps * 1000 / 8) if convertible else None
         results.append({
             "path": file["path"],
