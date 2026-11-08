@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+reports/
+tools/
+runtime/
+dist/
+config.local.json
