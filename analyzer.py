@@ -34,6 +34,16 @@ def main():
         percentage = data["size"] / total * 100 if total else 0
         print(f"{category:12} {data['count']:6} files  {format_size(data['size']):>10}  ({percentage:.1f}%)")
 
+    print("\n== By top-level folder ==")
+    folders = inventory.summary_by_folder(files)
+    for folder, data in sorted(folders.items(), key=lambda x: x[1]["size"], reverse=True)[:15]:
+        print(f"{folder:30} {data['count']:6} files  {format_size(data['size']):>10}")
+
+    print("\n== Extensions in 'other' ==")
+    other = inventory.summary_by_extension(files, "other")
+    for extension, data in sorted(other.items(), key=lambda x: x[1]["size"], reverse=True)[:15]:
+        print(f"{extension or '(none)':12} {data['count']:6} files  {format_size(data['size']):>10}")
+
     print("\n== Top 20 heaviest ==")
     for file in inventory.heaviest(files):
         print(f"{format_size(file['size']):>10}  {file['path']}")

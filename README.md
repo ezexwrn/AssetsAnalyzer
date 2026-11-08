@@ -9,4 +9,4 @@ Portable tool that analyzes game/program folders to find where the weight is
 
 ## Status
 
-Stage 1: folder inventory (work in progress).
+Stage 1 done: folder inventory by category, extension and top-level folder.

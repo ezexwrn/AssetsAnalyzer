@@ -8,6 +8,9 @@ CATEGORIES = {
     "executables": {".exe", ".dll", ".asi"},
     "config": {".ini", ".cfg", ".xml", ".json", ".txt"},
     "packed": {".img", ".pak", ".zip", ".rar", ".7z", ".cpk", ".bin"},
+    "installers": {".cab"},
+    "docs": {".rtf", ".pdf"},
+    "shaders": {".fxb"},
 }
 
 
@@ -32,6 +35,7 @@ def scan(root_folder):
                 "path": os.path.relpath(path, root_folder),
                 "size": size,
                 "category": category_of(extension),
+                "extension": extension,
             })
     return files
 
@@ -46,3 +50,20 @@ def summary_by_category(files):
 
 def heaviest(files, count=20):
     return sorted(files, key=lambda f: f["size"], reverse=True)[:count]
+
+def summary_by_extension(files, category):
+    totals = defaultdict(lambda: {"count": 0, "size": 0})
+    for file in files:
+        if file["category"] == category:
+            totals[file["extension"]]["count"] += 1
+            totals[file["extension"]]["size"] += file["size"]
+    return dict(totals)
+
+def summary_by_folder(files):
+    totals = defaultdict(lambda: {"count": 0, "size": 0})
+    for file in files:
+        parts = file["path"].split(os.sep)
+        folder = parts[0] if len(parts) > 1 else "(root)"
+        totals[folder]["count"] += 1
+        totals[folder]["size"] += file["size"]
+    return dict(totals)
