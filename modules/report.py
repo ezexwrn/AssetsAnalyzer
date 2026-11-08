@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime
 from html import escape
-from modules import inventory, duplicates
+from modules import inventory, duplicates, signatures
 
 TOP_EXTENSIONS = 15
 TOP_DUPLICATES = 10
@@ -29,7 +29,22 @@ def _sorted_by_size(summary):
     return sorted(summary.items(), key=lambda item: item[1]["size"], reverse=True)
 
 
-def build(folder, files, top_files, min_duplicate_size):
+def _signature_rows(data):
+    rows = []
+    for extension, labels in data["signatures"].items():
+        total_count = sum(item["count"] for item in labels.values())
+        total_size = sum(item["size"] for item in labels.values())
+        top = _sorted_by_size(labels)[:5]
+        detected = ", ".join(f"{label} x{item['count']}" for label, item in top)
+        rows.append((total_size, extension or "(none)", total_count, detected))
+    rows.sort(reverse=True)
+    return [
+        (extension, count, format_size(size), detected)
+        for size, extension, count, detected in rows[:TOP_EXTENSIONS]
+    ]
+
+
+def build(folder, files, top_files, min_duplicate_size, signature_categories):
     groups = duplicates.find(files, folder, min_duplicate_size)
     return {
         "game": os.path.basename(os.path.abspath(folder)),
@@ -40,6 +55,7 @@ def build(folder, files, top_files, min_duplicate_size):
         "categories": inventory.summary_by_category(files),
         "folders": inventory.summary_by_folder(files),
         "extensions_other": inventory.summary_by_extension(files, "other"),
+        "signatures": signatures.summarize(files, folder, signature_categories),
         "duplicates": {
             "recoverable_size": duplicates.recoverable_size(groups),
             "groups": groups,
@@ -64,6 +80,10 @@ def print_console(data, top_folders):
     print("\n== Extensions in 'other' ==")
     for extension, item in _sorted_by_size(data["extensions_other"])[:TOP_EXTENSIONS]:
         print(f"{extension or '(none)':12} {item['count']:6} files  {format_size(item['size']):>10}")
+
+    print("\n== Detected file types ==")
+    for extension, count, size, detected in _signature_rows(data):
+        print(f"{extension:12} {count:6} files  {size:>10}  {detected}")
 
     print("\n== Duplicates ==")
     groups = data["duplicates"]["groups"]
@@ -143,6 +163,8 @@ th, td {{ text-align: left; padding: 4px 8px; border-bottom: 1px solid #ccc; }}
 {_table(['Folder', 'Files', 'Size'], folders)}
 <h2>Extensions in 'other'</h2>
 {_table(['Extension', 'Files', 'Size'], extensions)}
+<h2>Detected file types</h2>
+{_table(['Extension', 'Files', 'Size', 'Detected types'], _signature_rows(data))}
 <h2>Duplicates</h2>
 <p>{duplicate_count} groups | recoverable: {recoverable}</p>
 {_table(['Size each', 'Copies', 'Paths (first 3)'], duplicate_rows)}
