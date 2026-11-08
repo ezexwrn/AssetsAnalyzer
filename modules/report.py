@@ -2,12 +2,12 @@ import json
 import os
 from datetime import datetime
 from html import escape
-from modules import inventory, duplicates, signatures, executables, textures
+from modules import inventory, duplicates, signatures, executables, textures, audio
 
 TOP_EXTENSIONS = 15
 TOP_DUPLICATES = 10
 TOP_TEXTURES = 10
-
+TOP_AUDIO = 10
 
 def format_size(total_bytes):
     value = float(total_bytes)
@@ -80,6 +80,40 @@ def _texture_rows(data):
     ]
 
 
+def _format_duration(seconds):
+    if seconds is None:
+        return "-"
+    minutes, rest = divmod(int(seconds), 60)
+    return f"{minutes}:{rest:02d}"
+
+
+def _audio_summary(data):
+    items = data["audio"]["items"]
+    uncompressed = sum(1 for item in items if item["convertible"])
+    saving = sum(item["estimated_saving"] for item in items)
+    return (
+        f"{len(items)} files | {uncompressed} uncompressed | "
+        f"estimated saving at {data['audio']['target_kbps']} kbps: {format_size(saving)}"
+    )
+
+
+def _audio_rows(data):
+    items = sorted(data["audio"]["items"], key=lambda item: item["size"], reverse=True)[:TOP_AUDIO]
+    return [
+        (
+            format_size(item["size"]),
+            item["format"],
+            item["channels"],
+            f"{item['sample_rate']} Hz",
+            f"{item['bitrate_kbps']:.0f} kbps" if item["bitrate_kbps"] else "-",
+            _format_duration(item["duration"]),
+            item["path"],
+            "uncompressed" if item["convertible"] else "",
+        )
+        for item in items
+    ]
+
+
 def build(folder, files, top_files, config):
     groups = duplicates.find(files, folder, config["duplicates_min_size"])
     return {
@@ -96,6 +130,10 @@ def build(folder, files, top_files, config):
         "textures": {
             "oversized_limit": config["texture_oversized"],
             "items": textures.summarize(files, folder, config["texture_oversized"]),
+        },
+        "audio": {
+            "target_kbps": config["audio_target_kbps"],
+            "items": audio.summarize(files, folder, config["audio_target_kbps"]),
         },
         "duplicates": {
             "recoverable_size": duplicates.recoverable_size(groups),
@@ -125,6 +163,11 @@ def print_console(data, top_folders):
     print("\n== Executables ==")
     for path, machine, kind, laa, size, note in _executable_rows(data):
         print(f"{machine:14} {kind:4} LAA:{laa:4} {size:>10}  {path}  {note}")
+
+    print("\n== Audio ==")
+    print(_audio_summary(data))
+    for size, audio_format, channels, rate, bitrate, duration, path, note in _audio_rows(data):
+        print(f"{size:>10}  {audio_format:10} {channels}ch {rate:>9} {bitrate:>9} {duration:>6}  {path}  {note}")
 
     print("\n== Textures ==")
     print(_texture_summary(data))
@@ -215,6 +258,9 @@ th, td {{ text-align: left; padding: 4px 8px; border-bottom: 1px solid #ccc; }}
 {_table(['Extension', 'Files', 'Size'], extensions)}
 <h2>Executables</h2>
 {_table(['Path', 'Architecture', 'Type', 'LAA', 'Size', 'Note'], _executable_rows(data))}
+<h2>Audio</h2>
+<p>{escape(_audio_summary(data))}</p>
+{_table(['Size', 'Format', 'Channels', 'Rate', 'Bitrate', 'Duration', 'Path', 'Note'], _audio_rows(data))}
 <h2>Textures</h2>
 <p>{escape(_texture_summary(data))}</p>
 {_table(['Size', 'Dimensions', 'Format', 'Detail', 'Path', 'Note'], _texture_rows(data))}

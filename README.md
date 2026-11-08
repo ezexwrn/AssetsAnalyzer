@@ -18,3 +18,4 @@ Stage 3 done: duplicate detection.
 Stage 4 done: file type detection by signature (magic bytes).
 Stage 5 done: executable analysis (architecture, Large Address Aware).
 Stage 6 done: texture analysis (format, resolution, oversized detection).
+Stage 7 done: audio analysis (WAV and OGG metadata, conversion estimate).
