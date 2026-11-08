@@ -3,7 +3,7 @@ import sys
 import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-INCLUDE = ["analyzer.py", "config.json", "README.md", "LICENSE", "run.bat", "run.sh", "modules", "runtime"]
+INCLUDE = ["analyzer.py", "config.json", "README.md", "CHANGELOG.md", "LICENSE", "run.bat", "run.sh", "modules", "runtime"]
 SKIP_FOLDERS = {"__pycache__"}
 
 
