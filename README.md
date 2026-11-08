@@ -18,6 +18,10 @@ Reports are saved next to the program in `reports/`.
 If a `runtime/` folder with the embeddable Python is present, it is used;
 otherwise the system Python (3.8+) is used.
 
+## Tests
+
+    python -m unittest discover -s tests -t .
+
 ## Status
 
 Stage 1 done: folder inventory by category, extension and top-level folder.
