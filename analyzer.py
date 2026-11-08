@@ -1,6 +1,9 @@
 import argparse
 import json
 import os
+import sys
+
+sys.dont_write_bytecode = True
 
 from modules import inventory, report
 
@@ -52,7 +55,13 @@ def main():
     compare_parser.add_argument("old")
     compare_parser.add_argument("new")
 
-    args = parser.parse_args()
+    argv = sys.argv[1:]
+    if not argv:
+        parser.print_help()
+        return
+    if argv[0] not in ("scan", "compare", "-h", "--help"):
+        argv.insert(0, "scan")
+    args = parser.parse_args(argv)
     if args.command == "scan":
         run_scan(args, config)
     else:
