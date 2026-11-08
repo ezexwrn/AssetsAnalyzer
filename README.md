@@ -16,3 +16,4 @@ Stage 1 done: folder inventory by category, extension and top-level folder.
 Stage 2 done: reports (JSON/HTML) and report comparison.
 Stage 3 done: duplicate detection.
 Stage 4 done: file type detection by signature (magic bytes).
+Stage 5 done: executable analysis (architecture, Large Address Aware).

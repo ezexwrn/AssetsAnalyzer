@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime
 from html import escape
-from modules import inventory, duplicates, signatures
+from modules import inventory, duplicates, signatures, executables
 
 TOP_EXTENSIONS = 15
 TOP_DUPLICATES = 10
@@ -44,6 +44,20 @@ def _signature_rows(data):
     ]
 
 
+def _executable_rows(data):
+    return [
+        (
+            item["path"],
+            item["machine"],
+            "dll" if item["is_dll"] else "exe",
+            "yes" if item["large_address_aware"] else "no",
+            format_size(item["size"]),
+            "LAA candidate" if item["laa_candidate"] else "",
+        )
+        for item in data["executables"]
+    ]
+
+
 def build(folder, files, top_files, min_duplicate_size, signature_categories):
     groups = duplicates.find(files, folder, min_duplicate_size)
     return {
@@ -56,6 +70,7 @@ def build(folder, files, top_files, min_duplicate_size, signature_categories):
         "folders": inventory.summary_by_folder(files),
         "extensions_other": inventory.summary_by_extension(files, "other"),
         "signatures": signatures.summarize(files, folder, signature_categories),
+        "executables": executables.summarize(files, folder),
         "duplicates": {
             "recoverable_size": duplicates.recoverable_size(groups),
             "groups": groups,
@@ -80,6 +95,10 @@ def print_console(data, top_folders):
     print("\n== Extensions in 'other' ==")
     for extension, item in _sorted_by_size(data["extensions_other"])[:TOP_EXTENSIONS]:
         print(f"{extension or '(none)':12} {item['count']:6} files  {format_size(item['size']):>10}")
+
+    print("\n== Executables ==")
+    for path, machine, kind, laa, size, note in _executable_rows(data):
+        print(f"{machine:14} {kind:4} LAA:{laa:4} {size:>10}  {path}  {note}")
 
     print("\n== Detected file types ==")
     for extension, count, size, detected in _signature_rows(data):
@@ -163,6 +182,8 @@ th, td {{ text-align: left; padding: 4px 8px; border-bottom: 1px solid #ccc; }}
 {_table(['Folder', 'Files', 'Size'], folders)}
 <h2>Extensions in 'other'</h2>
 {_table(['Extension', 'Files', 'Size'], extensions)}
+<h2>Executables</h2>
+{_table(['Path', 'Architecture', 'Type', 'LAA', 'Size', 'Note'], _executable_rows(data))}
 <h2>Detected file types</h2>
 {_table(['Extension', 'Files', 'Size', 'Detected types'], _signature_rows(data))}
 <h2>Duplicates</h2>
