@@ -2,10 +2,10 @@ import json
 import os
 from datetime import datetime
 from html import escape
-
-from modules import inventory
+from modules import inventory, duplicates
 
 TOP_EXTENSIONS = 15
+TOP_DUPLICATES = 10
 
 
 def format_size(total_bytes):
@@ -29,7 +29,8 @@ def _sorted_by_size(summary):
     return sorted(summary.items(), key=lambda item: item[1]["size"], reverse=True)
 
 
-def build(folder, files, top_files):
+def build(folder, files, top_files, min_duplicate_size):
+    groups = duplicates.find(files, folder, min_duplicate_size)
     return {
         "game": os.path.basename(os.path.abspath(folder)),
         "folder": os.path.abspath(folder),
@@ -39,6 +40,10 @@ def build(folder, files, top_files):
         "categories": inventory.summary_by_category(files),
         "folders": inventory.summary_by_folder(files),
         "extensions_other": inventory.summary_by_extension(files, "other"),
+        "duplicates": {
+            "recoverable_size": duplicates.recoverable_size(groups),
+            "groups": groups,
+        },
         "heaviest": inventory.heaviest(files, top_files),
     }
 
@@ -59,6 +64,17 @@ def print_console(data, top_folders):
     print("\n== Extensions in 'other' ==")
     for extension, item in _sorted_by_size(data["extensions_other"])[:TOP_EXTENSIONS]:
         print(f"{extension or '(none)':12} {item['count']:6} files  {format_size(item['size']):>10}")
+
+    print("\n== Duplicates ==")
+    groups = data["duplicates"]["groups"]
+    print(f"{len(groups)} groups | recoverable: {format_size(data['duplicates']['recoverable_size'])}")
+    for group in groups[:TOP_DUPLICATES]:
+        print(f"{format_size(group['size']):>10} x {len(group['paths'])}")
+        shown = group["paths"][:5]
+        for path in shown:
+            print(f"             {path}")
+        if len(group["paths"]) > len(shown):
+            print(f"             ... and {len(group['paths']) - len(shown)} more")
 
     print("\n== Heaviest files ==")
     for file in data["heaviest"]:
@@ -100,6 +116,13 @@ def save_html(data, path, top_folders):
     ]
     heaviest = [(format_size(file["size"]), file["path"]) for file in data["heaviest"]]
 
+    duplicate_count = len(data["duplicates"]["groups"])
+    recoverable = format_size(data["duplicates"]["recoverable_size"])
+    duplicate_rows = [
+        (format_size(group["size"]), len(group["paths"]), ", ".join(group["paths"][:3]))
+        for group in data["duplicates"]["groups"][:TOP_DUPLICATES]
+    ]
+
     page = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -120,6 +143,9 @@ th, td {{ text-align: left; padding: 4px 8px; border-bottom: 1px solid #ccc; }}
 {_table(['Folder', 'Files', 'Size'], folders)}
 <h2>Extensions in 'other'</h2>
 {_table(['Extension', 'Files', 'Size'], extensions)}
+<h2>Duplicates</h2>
+<p>{duplicate_count} groups | recoverable: {recoverable}</p>
+{_table(['Size each', 'Copies', 'Paths (first 3)'], duplicate_rows)}
 <h2>Heaviest files</h2>
 {_table(['Size', 'Path'], heaviest)}
 </body>

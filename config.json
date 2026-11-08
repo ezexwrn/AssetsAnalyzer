@@ -10,5 +10,6 @@
       "packed": [".img", ".pak", ".zip", ".rar", ".7z", ".cpk", ".bin"]
     },
     "top_files": 20,
-    "top_folders": 15
+    "top_folders": 15,
+    "duplicates_min_size": 1024
   }

@@ -20,8 +20,9 @@ def run_scan(args, config):
         return
 
     categories = {name: set(extensions) for name, extensions in config["categories"].items()}
+    print("Scanning (hashing duplicate candidates can take a while on slow disks)...")
     files = inventory.scan(args.folder, categories)
-    data = report.build(args.folder, files, args.top)
+    data = report.build(args.folder, files, args.top, config["duplicates_min_size"])
     report.print_console(data, config["top_folders"])
 
     json_path, html_path = report.save(data, REPORTS_FOLDER, config["top_folders"])
