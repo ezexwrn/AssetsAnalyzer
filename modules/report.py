@@ -2,10 +2,11 @@ import json
 import os
 from datetime import datetime
 from html import escape
-from modules import inventory, duplicates, signatures, executables
+from modules import inventory, duplicates, signatures, executables, textures
 
 TOP_EXTENSIONS = 15
 TOP_DUPLICATES = 10
+TOP_TEXTURES = 10
 
 
 def format_size(total_bytes):
@@ -58,8 +59,29 @@ def _executable_rows(data):
     ]
 
 
-def build(folder, files, top_files, min_duplicate_size, signature_categories):
-    groups = duplicates.find(files, folder, min_duplicate_size)
+def _texture_summary(data):
+    items = data["textures"]["items"]
+    oversized = sum(1 for item in items if item["oversized"])
+    return f"{len(items)} textures | {oversized} oversized (> {data['textures']['oversized_limit']} px)"
+
+
+def _texture_rows(data):
+    items = sorted(data["textures"]["items"], key=lambda item: item["size"], reverse=True)[:TOP_TEXTURES]
+    return [
+        (
+            format_size(item["size"]),
+            f"{item['width']}x{item['height']}",
+            item["format"],
+            item["detail"],
+            item["path"],
+            "oversized" if item["oversized"] else "",
+        )
+        for item in items
+    ]
+
+
+def build(folder, files, top_files, config):
+    groups = duplicates.find(files, folder, config["duplicates_min_size"])
     return {
         "game": os.path.basename(os.path.abspath(folder)),
         "folder": os.path.abspath(folder),
@@ -69,8 +91,12 @@ def build(folder, files, top_files, min_duplicate_size, signature_categories):
         "categories": inventory.summary_by_category(files),
         "folders": inventory.summary_by_folder(files),
         "extensions_other": inventory.summary_by_extension(files, "other"),
-        "signatures": signatures.summarize(files, folder, signature_categories),
+        "signatures": signatures.summarize(files, folder, config["signature_categories"]),
         "executables": executables.summarize(files, folder),
+        "textures": {
+            "oversized_limit": config["texture_oversized"],
+            "items": textures.summarize(files, folder, config["texture_oversized"]),
+        },
         "duplicates": {
             "recoverable_size": duplicates.recoverable_size(groups),
             "groups": groups,
@@ -99,6 +125,11 @@ def print_console(data, top_folders):
     print("\n== Executables ==")
     for path, machine, kind, laa, size, note in _executable_rows(data):
         print(f"{machine:14} {kind:4} LAA:{laa:4} {size:>10}  {path}  {note}")
+
+    print("\n== Textures ==")
+    print(_texture_summary(data))
+    for size, dimensions, texture_format, detail, path, note in _texture_rows(data):
+        print(f"{size:>10}  {dimensions:>9}  {texture_format:4} {detail:24} {path}  {note}")
 
     print("\n== Detected file types ==")
     for extension, count, size, detected in _signature_rows(data):
@@ -184,6 +215,9 @@ th, td {{ text-align: left; padding: 4px 8px; border-bottom: 1px solid #ccc; }}
 {_table(['Extension', 'Files', 'Size'], extensions)}
 <h2>Executables</h2>
 {_table(['Path', 'Architecture', 'Type', 'LAA', 'Size', 'Note'], _executable_rows(data))}
+<h2>Textures</h2>
+<p>{escape(_texture_summary(data))}</p>
+{_table(['Size', 'Dimensions', 'Format', 'Detail', 'Path', 'Note'], _texture_rows(data))}
 <h2>Detected file types</h2>
 {_table(['Extension', 'Files', 'Size', 'Detected types'], _signature_rows(data))}
 <h2>Duplicates</h2>
