@@ -1,27 +1,14 @@
 import os
 from collections import defaultdict
 
-CATEGORIES = {
-    "textures": {".dds", ".tga", ".png", ".jpg", ".jpeg", ".bmp", ".txd"},
-    "audio": {".wav", ".mp3", ".ogg", ".flac", ".wma"},
-    "video": {".bik", ".avi", ".mp4", ".wmv", ".mpg"},
-    "executables": {".exe", ".dll", ".asi"},
-    "config": {".ini", ".cfg", ".xml", ".json", ".txt"},
-    "packed": {".img", ".pak", ".zip", ".rar", ".7z", ".cpk", ".bin"},
-    "installers": {".cab"},
-    "docs": {".rtf", ".pdf"},
-    "shaders": {".fxb"},
-}
-
-
-def category_of(extension):
-    for name, extensions in CATEGORIES.items():
+def category_of(extension, categories):
+    for name, extensions in categories.items():
         if extension in extensions:
             return name
     return "other"
 
 
-def scan(root_folder):
+def scan(root_folder, categories):
     files = []
     for current_path, _, names in os.walk(root_folder):
         for name in names:
@@ -34,7 +21,7 @@ def scan(root_folder):
             files.append({
                 "path": os.path.relpath(path, root_folder),
                 "size": size,
-                "category": category_of(extension),
+                "category": category_of(extension, categories),
                 "extension": extension,
             })
     return files

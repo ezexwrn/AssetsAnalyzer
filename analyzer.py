@@ -1,52 +1,61 @@
+import argparse
+import json
 import os
-import sys
 
-from modules import inventory
+from modules import inventory, report
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
+REPORTS_FOLDER = os.path.join(BASE_DIR, "reports")
 
 
-def format_size(total_bytes):
-    value = float(total_bytes)
-    for unit in ("B", "KB", "MB", "GB"):
-        if value < 1024 or unit == "GB":
-            return f"{value:.1f} {unit}"
-        value /= 1024
+def load_config():
+    with open(CONFIG_PATH, encoding="utf-8") as config_file:
+        return json.load(config_file)
+
+
+def run_scan(args, config):
+    if not os.path.isdir(args.folder):
+        print(f"Folder not found: {args.folder}")
+        return
+
+    categories = {name: set(extensions) for name, extensions in config["categories"].items()}
+    files = inventory.scan(args.folder, categories)
+    data = report.build(args.folder, files, args.top)
+    report.print_console(data, config["top_folders"])
+
+    json_path, html_path = report.save(data, REPORTS_FOLDER, config["top_folders"])
+    print(f"\nReports saved:\n  {json_path}\n  {html_path}")
+
+
+def run_compare(args):
+    for path in (args.old, args.new):
+        if not os.path.isfile(path):
+            print(f"Report not found: {path}")
+            return
+
+    report.print_comparison(report.load_json(args.old), report.load_json(args.new))
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python analyzer.py <game_folder>")
-        return
+    config = load_config()
 
-    folder = sys.argv[1]
-    if not os.path.isdir(folder):
-        print(f"Folder not found: {folder}")
-        return
+    parser = argparse.ArgumentParser(description="Assets Analyzer: find where the weight is in a game folder.")
+    subparsers = parser.add_subparsers(dest="command", required=True)
 
-    files = inventory.scan(folder)
-    total = sum(f["size"] for f in files)
+    scan_parser = subparsers.add_parser("scan", help="analyze a game folder")
+    scan_parser.add_argument("folder")
+    scan_parser.add_argument("--top", type=int, default=config["top_files"], help="how many heaviest files to list")
 
-    print(f"\nAnalyzing: {folder}")
-    print(f"Files: {len(files)} | Total size: {format_size(total)}\n")
+    compare_parser = subparsers.add_parser("compare", help="compare two JSON reports")
+    compare_parser.add_argument("old")
+    compare_parser.add_argument("new")
 
-    print("== By category ==")
-    summary = inventory.summary_by_category(files)
-    for category, data in sorted(summary.items(), key=lambda x: x[1]["size"], reverse=True):
-        percentage = data["size"] / total * 100 if total else 0
-        print(f"{category:12} {data['count']:6} files  {format_size(data['size']):>10}  ({percentage:.1f}%)")
-
-    print("\n== By top-level folder ==")
-    folders = inventory.summary_by_folder(files)
-    for folder, data in sorted(folders.items(), key=lambda x: x[1]["size"], reverse=True)[:15]:
-        print(f"{folder:30} {data['count']:6} files  {format_size(data['size']):>10}")
-
-    print("\n== Extensions in 'other' ==")
-    other = inventory.summary_by_extension(files, "other")
-    for extension, data in sorted(other.items(), key=lambda x: x[1]["size"], reverse=True)[:15]:
-        print(f"{extension or '(none)':12} {data['count']:6} files  {format_size(data['size']):>10}")
-
-    print("\n== Top 20 heaviest ==")
-    for file in inventory.heaviest(files):
-        print(f"{format_size(file['size']):>10}  {file['path']}")
+    args = parser.parse_args()
+    if args.command == "scan":
+        run_scan(args, config)
+    else:
+        run_compare(args)
 
 
 if __name__ == "__main__":

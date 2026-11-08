@@ -1,0 +1,14 @@
+{
+    "categories": {
+      "textures": [".dds", ".tga", ".png", ".jpg", ".jpeg", ".bmp", ".txd"],
+      "audio": [".wav", ".mp3", ".ogg", ".flac", ".wma"],
+      "video": [".bik", ".avi", ".mp4", ".wmv", ".mpg"],
+      "executables": [".exe", ".dll", ".asi"],
+      "config": [".ini", ".cfg", ".xml", ".json", ".txt"],
+      "installers": [".cab"],
+      "docs": [".rtf", ".pdf"],
+      "packed": [".img", ".pak", ".zip", ".rar", ".7z", ".cpk", ".bin"]
+    },
+    "top_files": 20,
+    "top_folders": 15
+  }
